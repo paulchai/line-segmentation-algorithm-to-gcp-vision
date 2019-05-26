@@ -99,24 +99,21 @@ function getMergedLines(lines,rawText) {
 }
 
 function arrangeWordsInOrder(mergedArray, k) {
-    let mergedLine = '';
-    let wordArray = [];
     let line = mergedArray[k]['match'];
-    // [0]['matchLineNum']
-    for(let i=0; i < line.length; i++){
-        let index = line[i]['matchLineNum'];
-        let matchedWordForLine = mergedArray[index].description;
+    let mline = line.map(function(l) {
+        let index = l['matchLineNum'];
+        return {name: mergedArray[index].description, x: mergedArray[index].boundingPoly.vertices[0].x};
+    });
 
-        let mainX = mergedArray[k].boundingPoly.vertices[0].x;
-        let compareX = mergedArray[index].boundingPoly.vertices[0].x;
+    mline.push({name: mergedArray[k].description, x: mergedArray[k].boundingPoly.vertices[0].x});
 
-        if(compareX > mainX) {
-            mergedLine = mergedArray[k].description + ' ' + matchedWordForLine;
-        }else {
-            mergedLine = matchedWordForLine + ' ' + mergedArray[k].description;
-        }
-    }
-    return mergedLine;
+    mline = mline.sort(function (a, b) {
+        return a.x > b.x;
+    }).reduce(function (a, b) {
+        return a === '' ? b.name : a + '\t' + b.name
+    }, '');
+    
+    return mline;
 }
 
 var exports = module.exports = {};

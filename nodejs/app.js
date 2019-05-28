@@ -2,10 +2,10 @@ const fs = require("fs");
 const deepcopy = require("deepcopy");
 const coordinatesHelper = require('./coordinatesHelper');
 
-const content = fs.readFileSync("../json/S01200HQT173.jpg.json");
-const textJson = JSON.parse(content);
+//const content = fs.readFileSync("../json/S01200HQT173.jpg.json");
+//const textJson = JSON.parse(content);
 
-initLineSegmentation(textJson[0]['responses'][0]);
+//initLineSegmentation(textJson[0]['responses'][0]);
 
 /**
  * GCP Vision groups several nearby words to appropriate lines
@@ -95,25 +95,42 @@ function getMergedLines(lines,rawText) {
             }
         }
     }
+    mergedArray.sort( (a, b) => {
+        return b.boundingPoly.vertices[0].y - a.boundingPoly.vertices[0].y;
+    });
     return mergedArray;
 }
 
 function arrangeWordsInOrder(mergedArray, k) {
-    let line = mergedArray[k]['match'];
-    let mline = line.map(function(l) {
-        let index = l['matchLineNum'];
-        return {name: mergedArray[index].description, x: mergedArray[index].boundingPoly.vertices[0].x};
-    });
+    function visitLine(line, hashMap, array) {
+        if(!hashMap[line.lineNum]) {
+            hashMap[line.lineNum] = true;
+            array.push(line);
+        }
+    }
+    let stack = [], mlines = [], hashMap = {};
+    stack.push(mergedArray[k]);
 
-    mline.push({name: mergedArray[k].description, x: mergedArray[k].boundingPoly.vertices[0].x});
+    while(stack.length !== 0) {
+        const line = stack.pop();
+        if(line['match'].length === 0) {
+            visitLine(line, hashMap, mlines);
+        } else {
+            for(let i = line['match'].length - 1; i >= 0; i--) {
+                const index = line['match'][i]['matchLineNum'];
+                stack.push(mergedArray[index]);
+            }
+            visitLine(line, hashMap, mlines);
+        }
+    }
 
-    mline = mline.sort(function (a, b) {
-        return a.x > b.x;
-    }).reduce(function (a, b) {
-        return a === '' ? b.name : a + '\t' + b.name
-    }, '');
-    
-    return mline;
+    mlines = mlines.sort( (a, b) => {
+        return a.boundingPoly.vertices[0].x - b.boundingPoly.vertices[0].x;
+    }).reduce((a, b) => {
+        return a + '\t' + b.description
+    }, mlines.shift().description);
+
+    return mlines;
 }
 
 var exports = module.exports = {};
